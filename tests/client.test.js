@@ -58,7 +58,7 @@ async function clientTest (UDPClient, identifier) {
     await once(client, 'ready')
 
     const dateBeforeSent = Date.now()
-    client.log(payload)
+    client.write(payload)
 
     await delay(5)
 
@@ -110,7 +110,7 @@ async function clientTest (UDPClient, identifier) {
 
     await once(client, 'ready')
 
-    client.log(payload)
+    client.write(payload)
 
     await delay(5)
 

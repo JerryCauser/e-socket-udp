@@ -1,23 +1,6 @@
-import { Buffer } from 'node:buffer'
 import { UDPSocket as BasicUDPSocket } from 'socket-udp'
 import { ID_SIZE, parseId } from './identifier.js'
 import { DEFAULT_DECRYPT_FUNCTION } from './constants.js'
-
-/**
- * @typedef {object} UDPSocketOptions
- * @property {string} [type='udp4']
- * @property {number} [port=44002]
- * @property {string} [host=('127.0.0.1'|'::1')]
- * @property {string | ((payload: Buffer) => Buffer)} [decryption]
- *    if passed string - will be applied aes-256-ctr encryption with passed string as secret, so it should be 64char long;
- *    if passed function - will be used that function to encrypt every message;
- *    if passed undefined - will not use any kind of encryption
- * @property {number?} [fragmentation=true] enables fragmentation mode
- * @property {number?} [gcIntervalTime=5_000] how often instance will check internal buffer to delete expired messages
- * @property {number?} [gcExpirationTime=10_000] how long chunks can await all missing chunks in internal buffer
- *
- * @extends {ReadableOptions}
- */
 
 /**
  * @class
@@ -27,13 +10,13 @@ class UDPSocketPlus extends BasicUDPSocket {
   /** @type {undefined|function(Buffer): Buffer} */
   #decryptionFunction
 
-  /** @type {undefined|string} */
+  /** @type {undefined|Buffer} */
   #decryptionSecret
 
   /** @type {boolean} */
   #decryptionEnabled = false
 
-  /** @type {Map<string, [logBodyMap:Map, lastUpdate:number, logDate:Date, logId:string]>} data */
+  /** @type {Collector} data */
   #collector = new Map()
 
   /** @type {number} */
@@ -49,7 +32,7 @@ class UDPSocketPlus extends BasicUDPSocket {
   #gcExpirationTime
 
   /**
-   * @param {UdpSocketOptions} [options]
+   * @param {UDPSocketOptions} [options]
    */
   constructor ({
     decryption,
@@ -116,7 +99,7 @@ class UDPSocketPlus extends BasicUDPSocket {
 
     const [date, id, total, index] = parseId(body.subarray(0, ID_SIZE))
 
-    /** @type {[logBodyMap:Map, lastUpdate:number, logDate:Date, logId:string]} */
+    /** @type {CollectorElem} */
     let data = this.#collector.get(id)
     if (!data) {
       data = [new Map(), Date.now(), date, id]

@@ -1,5 +1,4 @@
 import crypto from 'node:crypto'
-import { Buffer } from 'node:buffer'
 
 export const DATE_SIZE = 6
 

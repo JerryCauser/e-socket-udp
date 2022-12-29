@@ -1,46 +1,69 @@
 /// <reference types="node" />
-import type { EventEmitter } from 'node:events'
 import type { Buffer } from 'node:buffer'
-import type { Readable } from 'node:stream'
-import type * as dgram from  'node:dgram'
+import type * as Basic from 'socket-udp'
 
 export const DEFAULT_PORT: number
 
-export interface MessageHead extends dgram.RemoteInfo {
+export interface MessageHead extends Basic.MessageHead {
     body?: Buffer
+    /** Contains original size of message before decryption */
+    originSize?: number
 }
 
-export type UDPSocketOptions = {
-    type?: dgram.SocketType
-    port?: number
-    host?: string
+export type UDPSocketOptions = Basic.UDPSocketOptions & {
     /**
-     * makes this stream to work in object mode with autoparse
+     * if passed string - will be applied 'aes-256-ctr' decryption with passed string as secret, so it should be 64char long;
+     * if passed function - will be used that function to decrypt every message;
+     * if passed undefined - will not use any kind of decryption
      */
-    objectMode?: boolean
+    decryption?: (Buffer) => Buffer | string
     /**
-     * makes this stream to pass payload with or without meta info like ipaddress, port, etc.
-     * useful when you want to stream video or filedata right into file
+     * Enables fragmentation mode. Required for big messages
      */
-    headed?: boolean
+    fragmentation?: boolean
+    /**
+     * How often instance will check internal buffer to delete expired messages
+     */
+    gcIntervalTime?: number
+    /**
+     * How long chunks can await all missing chunks in internal buffer
+     */
+    gcExpirationTime?: number
 } | undefined
 
-export class UDPSocket extends Readable {
+export class UDPSocket extends Basic.UDPSocket {
     constructor (options?: UDPSocketOptions)
-    get origin (): dgram.Socket
-    get address (): string
-    get port (): number
-    get allowPush (): boolean
-    handleMessage (body: Buffer | any, head?: MessageHead | undefined): void
+    handleMessage (body: Buffer | any, head?: MessageHead | undefined): boolean
 }
 
-export type UDPClientOptions = {
-    type?: dgram.SocketType
-    port?: number
-    host?: string
+export type UDPClientOptions = Basic.UDPClientOptions & {
+    /**
+     * if passed string - will be applied aes-256-ctr encryption with passed string as secret;
+     * if passed function - will be used that function to encrypt every message;
+     * if passed undefined - will not use any kind of encryption
+     */
+    encryption?: (Buffer) => Buffer | string
+    /**
+     * Enables fragmentation.
+     * Useful to transfer large messages in parallel without messing them up
+     */
+    fragmentation?: boolean
+    /**
+     * In bytes. Used when fragmentation enabled
+     */
+    packetSize?: number
 } | undefined
 
-export class UDPClient extends EventEmitter {
+export class UDPClient extends Basic.UDPClient {
     constructor (options?: UDPClientOptions)
-    send (buffer: Buffer): void
+    handleMessage(body: Buffer, head: MessageHead): void
 }
+
+type CollectorElem = [
+  msgBodyMap:Map<number, Buffer>,
+  lastUpdate: number,
+  msgDate: Date,
+  msgId: string
+]
+
+type Collector = Map<string, CollectorElem>

@@ -24,7 +24,7 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "build": "esbuild ./index.js --format=cjs --platform=node --target=node16 --outdir='./cjs'",
+    "build": "esbuild ./index.js --bundle --packages=external --format=cjs --platform=node --target=node16 --outdir='./cjs'",
     "release:patch": "standard-version --release-as patch",
     "release:minor": "standard-version --release-as minor",
     "release:major": "standard-version --release-as major",

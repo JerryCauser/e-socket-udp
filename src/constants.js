@@ -1,5 +1,4 @@
 import crypto from 'node:crypto'
-import { Buffer } from 'node:buffer'
 
 export const DEFAULT_PORT = 44302
 export const IV_SIZE = 16

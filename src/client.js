@@ -1,20 +1,6 @@
-import { Buffer } from 'node:buffer'
 import { UDPClient as BasicUDPClient } from 'socket-udp'
 import { generateId, setChunkMetaInfo, ID_SIZE } from './identifier.js'
 import { IV_SIZE, DEFAULT_ENCRYPT_FUNCTION } from './constants.js'
-
-/**
- * @typedef {object} UDPClientOptions
- * @property {string} [type='udp4']
- * @property {number} [port=44002]
- * @property {string} [host=('127.0.0.1'|'::1')]
- * @property {string | ((payload: Buffer) => Buffer)} [encryption]
- *                    if passed string - will be applied aes-256-ctr encryption with passed string as secret;
- *                    if passed function - will be used that function to encrypt every message;
- * @property {boolean} [fragmentation=true] enables fragmentation.
- *                    Useful to transfer large messages in parallel without messing them up
- * @property {number} [packetSize=1280] in bytes. Used when fragmentation enabled
- */
 
 /**
  * @param {UDPClientOptions} [options={}]

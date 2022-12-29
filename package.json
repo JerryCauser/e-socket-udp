@@ -1,6 +1,6 @@
 {
   "name": "e-socket-udp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Enriched (with features) UDP Socket and Client. Encryption. Big data. CJS & ESM",
   "main": "cjs/index.js",
   "module": "index.js",

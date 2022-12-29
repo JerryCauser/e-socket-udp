@@ -1,0 +1,79 @@
+{
+  "name": "e-socket-udp",
+  "version": "0.1.0",
+  "description": "Enriched (with features) UDP Socket and Client. Encryption. Big data. CJS & ESM",
+  "main": "cjs/index.js",
+  "module": "index.js",
+  "exports": {
+    ".": {
+      "require": "./cjs/index.js",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "/cjs/index.js",
+    "/cjs/package.json",
+    "/src",
+    "/types",
+    "index.js",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "build": "esbuild ./index.js --format=cjs --platform=node --target=node16 --outdir='./cjs'",
+    "release:patch": "standard-version --release-as patch",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "push-release": "git push --follow-tags origin master",
+    "prettify": "prettier --write -u './*.js' './**/*.js' !./cjs/index.js",
+    "test": "standard && node tests/index.js && node cjs/test.js",
+    "fix": "npm run prettify && standard --fix",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JerryCauser/e-socket-udp.git"
+  },
+  "keywords": [
+    "udp",
+    "udp socket",
+    "udp encrypted",
+    "aes-256-ctr",
+    "encryption",
+    "encrypted",
+    "udp client"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "author": "Artem Abzanov",
+  "bugs": {
+    "url": "https://github.com/JerryCauser/e-socket-udp/issues"
+  },
+  "homepage": "https://github.com/JerryCauser/e-socket-udp#readme",
+  "dependencies": {
+    "socket-udp": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "esbuild": "^0.16.12",
+    "husky": "^8.0.2",
+    "prettier": "^2.8.1",
+    "standard": "^17.0.0",
+    "standard-version": "^9.5.0"
+  },
+  "types": "./types/index.d.ts",
+  "eslintConfig": {
+    "extends": [
+      "eslint:recommended",
+      "standard"
+    ]
+  },
+  "eslintIgnore": [
+    "cjs/index.js",
+    "*.d.ts"
+  ]
+}

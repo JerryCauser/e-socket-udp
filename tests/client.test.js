@@ -53,9 +53,15 @@ async function clientTest (UDPClient, identifier) {
   const DEFAULT_PORT = 45002
 
   async function testClientSmall (port = DEFAULT_PORT, fragmentation) {
-    const caseAlias = `${alias} client sending small message fragmentation=${fragmentation ? 'true' : 'false'} ->`
+    const caseAlias = `${alias} client sending small message fragmentation=${
+      fragmentation ? 'true' : 'false'
+    } ->`
     const socket = await createUDPSocket(port)
-    const client = new UDPClient({ port, fragmentation, packetSize: PAYLOAD_SIZE })
+    const client = new UDPClient({
+      port,
+      fragmentation,
+      packetSize: PAYLOAD_SIZE
+    })
     const payload = crypto.randomBytes(PAYLOAD_SIZE - ID_SIZE)
 
     await once(client, 'ready')
@@ -72,28 +78,30 @@ async function clientTest (UDPClient, identifier) {
     )
 
     // eslint-disable-next-line no-unused-vars
-    const [messageDate, id, total, index] =
-      fragmentation
-        ? parseId(socket.messages[0].subarray(0, ID_SIZE))
-        : []
+    const [messageDate, id, total, index] = fragmentation
+      ? parseId(socket.messages[0].subarray(0, ID_SIZE))
+      : []
 
-    fragmentation && assert.ok(
-      messageDate >= dateBeforeSent && messageDate <= Date.now(),
-      `${caseAlias} Message date invalid ${new Date().toISOString()} but should be ${new Date(
-        dateBeforeSent
-      ).toISOString()}±5ms`
-    )
+    fragmentation &&
+      assert.ok(
+        messageDate >= dateBeforeSent && messageDate <= Date.now(),
+        `${caseAlias} Message date invalid ${new Date().toISOString()} but should be ${new Date(
+          dateBeforeSent
+        ).toISOString()}±5ms`
+      )
 
-    fragmentation && assert.strictEqual(
-      total,
-      0,
-      `${caseAlias} Message total isn't same as expected`
-    )
-    fragmentation && assert.strictEqual(
-      index,
-      0,
-      `${caseAlias} Message index isn't same as expected`
-    )
+    fragmentation &&
+      assert.strictEqual(
+        total,
+        0,
+        `${caseAlias} Message total isn't same as expected`
+      )
+    fragmentation &&
+      assert.strictEqual(
+        index,
+        0,
+        `${caseAlias} Message index isn't same as expected`
+      )
 
     assert.deepStrictEqual(
       fragmentation ? socket.messages[0].subarray(ID_SIZE) : socket.messages[0],
@@ -109,7 +117,11 @@ async function clientTest (UDPClient, identifier) {
   async function testClientLarge (port = DEFAULT_PORT) {
     const caseAlias = `${alias} client sending large message ->`
     const socket = await createUDPSocket(port)
-    const client = new UDPClient({ port, fragmentation: true, packetSize: PAYLOAD_SIZE })
+    const client = new UDPClient({
+      port,
+      fragmentation: true,
+      packetSize: PAYLOAD_SIZE
+    })
     const payload = crypto.randomBytes((PAYLOAD_SIZE - ID_SIZE) * 2)
 
     await once(client, 'ready')

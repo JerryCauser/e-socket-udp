@@ -103,7 +103,9 @@ async function socketTest (UDPSocket, identifier, constants) {
   }
 
   async function testSocketSmall (fragmentation) {
-    const caseAlias = `${alias} sending small message with fragmentation=${fragmentation ? 'true' : 'false'} ->`
+    const caseAlias = `${alias} sending small message with fragmentation=${
+      fragmentation ? 'true' : 'false'
+    } ->`
     const results = { fails: [] }
 
     const client = await createUDPClient()
@@ -152,9 +154,7 @@ async function socketTest (UDPSocket, identifier, constants) {
       results
     )
 
-    const messageOne = fragmentation
-      ? socket.messages[0]
-      : socket.messages[0]
+    const messageOne = fragmentation ? socket.messages[0] : socket.messages[0]
 
     checkMessage(caseAlias, messageOne, results, payloadOne)
 
@@ -172,9 +172,7 @@ async function socketTest (UDPSocket, identifier, constants) {
       results
     )
 
-    const messageTwo = fragmentation
-      ? socket.messages[1]
-      : socket.messages[1]
+    const messageTwo = fragmentation ? socket.messages[1] : socket.messages[1]
 
     checkMessage(caseAlias, messageTwo, results, payloadTwo)
 
@@ -195,7 +193,9 @@ async function socketTest (UDPSocket, identifier, constants) {
     })
 
     const payload1 = crypto.randomBytes(BIG_PACKET_SIZE - ID_SIZE)
-    const payload2 = crypto.randomBytes(BIG_PACKET_SIZE - (Math.random() * BIG_PACKET_SIZE / 2) - ID_SIZE)
+    const payload2 = crypto.randomBytes(
+      BIG_PACKET_SIZE - (Math.random() * BIG_PACKET_SIZE) / 2 - ID_SIZE
+    )
 
     const dateNow = Date.now()
     const payloadId = generateId()
@@ -290,12 +290,7 @@ async function socketTest (UDPSocket, identifier, constants) {
       results
     )
 
-    checkMessage(
-      caseAlias,
-      socket.messages[2],
-      results,
-      payload5
-    )
+    checkMessage(caseAlias, socket.messages[2], results, payload5)
 
     await Promise.all([socket.stop(), client.stop()])
 
@@ -393,7 +388,9 @@ async function socketTest (UDPSocket, identifier, constants) {
   }
 
   async function testSocketEncFunction (encType, fragmentation) {
-    const caseAlias = `${alias} check decryption via Function with fragmentation=${fragmentation ? 'true' : 'false'} ->`
+    const caseAlias = `${alias} check decryption via Function with fragmentation=${
+      fragmentation ? 'true' : 'false'
+    } ->`
     const results = { fails: [] }
 
     let enc, dec
@@ -468,19 +465,9 @@ async function socketTest (UDPSocket, identifier, constants) {
         results
       )
 
-      checkMessage(
-        caseAlias,
-        socket.messages[0],
-        results,
-        payloadOne
-      )
+      checkMessage(caseAlias, socket.messages[0], results, payloadOne)
 
-      checkMessage(
-        caseAlias,
-        socket.messages[1],
-        results,
-        payloadTwo
-      )
+      checkMessage(caseAlias, socket.messages[1], results, payloadTwo)
     }
 
     await Promise.all([socket.stop(), client.stop()])

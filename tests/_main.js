@@ -13,12 +13,7 @@ import socketTest from './socket.test.js'
 
 export default async function _main (
   type,
-  {
-    UDPClient,
-    UDPSocket,
-    _constants,
-    _identifier
-  }
+  { UDPClient, UDPSocket, _constants, _identifier }
 ) {
   console.log(`${type} Tests Started\n`)
   let errorsCount = 0

@@ -87,7 +87,7 @@ class UDPClientPlus extends BasicUDPClient {
 
     const createFragmentCallbackPromise = (fragment) => {
       return new Promise((resolve, reject) => {
-        allowWrite = super.write(fragment, encoding, err => {
+        allowWrite = super.write(fragment, encoding, (err) => {
           if (err) reject(err)
 
           resolve()

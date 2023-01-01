@@ -154,7 +154,8 @@ class UDPSocketPlus extends BasicUDPSocket {
 
     if (body.size > 1) {
       const chunkSize = body.get(0).byteLength
-      const size = chunkSize * (body.size - 1) + body.get(body.size - 1).byteLength
+      const size =
+        chunkSize * (body.size - 1) + body.get(body.size - 1).byteLength
       bodyBuffered = Buffer.alloc(size)
 
       for (const entry of body) {

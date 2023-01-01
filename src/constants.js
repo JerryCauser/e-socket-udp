@@ -39,3 +39,6 @@ export const DEFAULT_DECRYPT_FUNCTION = (secret, buffer) => {
     beginChunk.length + finalChunk.length
   )
 }
+
+export const WARNING_MISSING_MESSAGE = Symbol('missing_message')
+export const WARNING_DECRYPTION_FAIL = Symbol('decryption_fail')

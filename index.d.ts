@@ -89,9 +89,9 @@ export interface CollectorInstance {
     delete (id: string): boolean
     start? (): void
     stop? (): void
-    on? (event: 'warning', listener: (WarningMessage) => void): this
+    on? (event: 'warning', listener: (message: WarningMessage) => void): this
     on? (event: string, listener: Function): this
-    off? (event: 'warning', listener: (WarningMessage) => void): this
+    off? (event: 'warning', listener: (message: WarningMessage) => void): this
     off? (event: string, listener: Function): this
 }
 
@@ -101,8 +101,8 @@ declare class Collector extends EventEmitter implements CollectorInstance {
     delete (id: string): boolean
     start (): void
     stop (): void
-    on (event: 'warning', listener: (WarningMessage) => void): this
+    on (event: 'warning', listener: (message: WarningMessage) => void): this
     on (event: string, listener: Function): this
-    off (event: 'warning', listener: (WarningMessage) => void): this
+    off (event: 'warning', listener: (message: WarningMessage) => void): this
     off (event: string, listener: Function): this
 }

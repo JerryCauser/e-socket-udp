@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.0](https://github.com/JerryCauser/e-socket-udp/compare/v0.1.1...v0.2.0) (2023-01-01)
+
+
+### Bug Fixes
+
+* remove unused variable ([30c0a19](https://github.com/JerryCauser/e-socket-udp/commit/30c0a1926755c337f13d5bfcb14cc445a26cd147))
+
 ### 0.1.1 (2022-12-29)
 
 

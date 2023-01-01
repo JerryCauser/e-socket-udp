@@ -43,6 +43,7 @@
     "udp socket",
     "udp encrypted",
     "aes-256-ctr",
+    "udp stream",
     "encryption",
     "encrypted",
     "udp client"

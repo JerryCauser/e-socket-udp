@@ -42,7 +42,7 @@ class UDPClientPlus extends BasicUDPClient {
         this.#encryptionSecret = Buffer.from(encryption, 'hex')
 
         this.#encryptionFunction = (data) =>
-          DEFAULT_ENCRYPT_FUNCTION(data, this.#encryptionSecret)
+          DEFAULT_ENCRYPT_FUNCTION(this.#encryptionSecret, data)
       } else if (encryption instanceof Function) {
         this.#encryptionFunction = encryption
       }

@@ -74,13 +74,13 @@ export function setChunkMetaInfo (id, total, index) {
 
 /**
  * @param {Buffer} buffer
- * @returns {[Date, string, number, number]}
+ * @returns {[Date, Buffer, number, number]}
  */
 export function parseId (buffer) {
   if (buffer.length !== ID_SIZE) throw new Error('id_size_not_valid')
 
   const date = new Date(buffer.readUintBE(0, DATE_SIZE))
-  const id = buffer.subarray(0, SEED_SIZE).toString('hex')
+  const id = buffer.subarray(0, SEED_SIZE)
   const total = buffer.readUintBE(SEED_SIZE, COUNTER_TOTAL_SIZE)
   const index = buffer.readUintBE(SEED_N_TOTAL_OFFSET, COUNTER_INDEX_SIZE)
 

@@ -1,7 +1,7 @@
 import identifierTests from './identifier.test.js'
 import constantsTest from './constants.test.js'
 import clientTest from './client.test.js'
-// import socketTest from './socket.test.js'
+import socketTest from './socket.test.js'
 
 /**
  * sequence:
@@ -26,7 +26,7 @@ export default async function _main (
   errorsCount += await identifierTests(_identifier)
   errorsCount += await constantsTest(_constants)
   errorsCount += await clientTest(UDPClient, _identifier)
-  // errorsCount += await socketTest(UDPSocket, _identifier, _constants)
+  errorsCount += await socketTest(UDPSocket, _identifier, _constants)
 
   if (errorsCount === 0) console.log('All tests passed')
   else {

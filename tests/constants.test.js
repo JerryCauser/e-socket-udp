@@ -14,8 +14,8 @@ async function constantsTests ({
     const caseAlias = `${alias} ENCRYPT and DECRYPT ->`
     const originData = crypto.randomBytes(1024)
     const secret = crypto.randomBytes(32)
-    const encData = DEFAULT_ENCRYPT_FUNCTION(originData, secret)
-    const decData = DEFAULT_DECRYPT_FUNCTION(encData, secret)
+    const encData = DEFAULT_ENCRYPT_FUNCTION(secret, originData)
+    const decData = DEFAULT_DECRYPT_FUNCTION(secret, encData)
 
     assert.ok(
       encData instanceof Buffer,

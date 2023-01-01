@@ -102,7 +102,7 @@ function parseId(buffer) {
   if (buffer.length !== ID_SIZE)
     throw new Error("id_size_not_valid");
   const date = new Date(buffer.readUintBE(0, DATE_SIZE));
-  const id = buffer.subarray(0, SEED_SIZE).toString("hex");
+  const id = buffer.subarray(0, SEED_SIZE);
   const total = buffer.readUintBE(SEED_SIZE, COUNTER_TOTAL_SIZE);
   const index = buffer.readUintBE(SEED_N_TOTAL_OFFSET, COUNTER_INDEX_SIZE);
   return [date, id, total, index];
@@ -120,7 +120,7 @@ var import_node_crypto2 = __toESM(require("node:crypto"), 1);
 var DEFAULT_PORT = 44302;
 var IV_SIZE = 16;
 var DEFAULT_ENCRYPTION = "aes-256-ctr";
-var DEFAULT_ENCRYPT_FUNCTION = (payload, secret) => {
+var DEFAULT_ENCRYPT_FUNCTION = (secret, payload) => {
   const iv = import_node_crypto2.default.randomBytes(IV_SIZE).subarray(0, IV_SIZE);
   const cipher = import_node_crypto2.default.createCipheriv(DEFAULT_ENCRYPTION, secret, iv);
   const beginChunk = cipher.update(payload);
@@ -130,7 +130,7 @@ var DEFAULT_ENCRYPT_FUNCTION = (payload, secret) => {
     IV_SIZE + beginChunk.length + finalChunk.length
   );
 };
-var DEFAULT_DECRYPT_FUNCTION = (buffer, secret) => {
+var DEFAULT_DECRYPT_FUNCTION = (secret, buffer) => {
   const iv = buffer.subarray(0, IV_SIZE);
   const payload = buffer.subarray(IV_SIZE);
   const decipher = import_node_crypto2.default.createDecipheriv(DEFAULT_ENCRYPTION, secret, iv);
@@ -166,7 +166,7 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
     if (decryption) {
       if (typeof decryption === "string") {
         this.#decryptionSecret = Buffer.from(decryption, "hex");
-        this.#decryptionFunction = (data) => DEFAULT_DECRYPT_FUNCTION(data, this.#decryptionSecret);
+        this.#decryptionFunction = (data) => DEFAULT_DECRYPT_FUNCTION(this.#decryptionSecret, data);
       } else if (decryption instanceof Function) {
         this.#decryptionFunction = decryption;
       }
@@ -190,25 +190,34 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
       try {
         body = this.#decryptionFunction(body);
         head.originSize = head.size;
-        head.size = body.byteLength;
       } catch (e) {
         this.emit("warning", { message: "decryption_fail" });
       }
     }
     if (this.#fragmentation !== true) {
+      head.size = body.byteLength;
       return super.handleMessage(body, head);
     }
-    const [date, id, total, index] = parseId(body.subarray(0, ID_SIZE));
+    const [date, idBuffer, total, index] = parseId(body.subarray(0, ID_SIZE));
+    const id = idBuffer.toString("hex");
     let data = this.#collector.get(id);
     if (!data) {
-      data = [/* @__PURE__ */ new Map(), Date.now(), date, id];
+      data = [/* @__PURE__ */ new Map(), Date.now(), date, id, 0];
       this.#collector.set(id, data);
     }
     data[0].set(index, body.subarray(ID_SIZE));
+    if (this.#decryptionEnabled) {
+      data[4] += head.originSize;
+    } else {
+      data[4] += body.byteLength;
+    }
     if (data[0].size === total + 1) {
       this.#collector.delete(id);
-      const compiledBody = this.#compileMessage(data[0], data[2], data[3]);
+      const compiledBody = this.#compileMessage(data[0]);
+      head.originSize = data[4];
       head.size = compiledBody.length;
+      head.id = id;
+      head.sentDate = date;
       return super.handleMessage(compiledBody, head);
     }
     return this.allowPush;
@@ -226,19 +235,19 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
       }
     }
   };
-  #compileMessage(body, date, id) {
+  #compileMessage(body) {
     let bodyBuffered;
     if (body.size > 1) {
-      const sortedBuffers = [...body.entries()].sort((a, b) => a[0] - b[0]).map((n) => n[1]);
-      bodyBuffered = Buffer.concat(sortedBuffers);
+      const chunkSize = body.get(0).byteLength;
+      const size = chunkSize * (body.size - 1) + body.get(body.size - 1).byteLength;
+      bodyBuffered = Buffer.alloc(size);
+      for (const entry of body) {
+        bodyBuffered.set(entry[1], chunkSize * entry[0]);
+      }
     } else {
-      bodyBuffered = [...body.values()][0];
+      bodyBuffered = body.get(0);
     }
-    const idAsBuffer = Buffer.from(id, "hex");
-    const result = Buffer.alloc(idAsBuffer.length + bodyBuffered.length);
-    result.set(idAsBuffer, 0);
-    result.set(bodyBuffered, idAsBuffer.length);
-    return result;
+    return bodyBuffered;
   }
 };
 var socket_default = UDPSocketPlus;
@@ -264,7 +273,7 @@ var UDPClientPlus = class extends import_socket_udp2.UDPClient {
       if (typeof encryption === "string") {
         this.#packetSize = packetSize - IV_SIZE;
         this.#encryptionSecret = Buffer.from(encryption, "hex");
-        this.#encryptionFunction = (data) => DEFAULT_ENCRYPT_FUNCTION(data, this.#encryptionSecret);
+        this.#encryptionFunction = (data) => DEFAULT_ENCRYPT_FUNCTION(this.#encryptionSecret, data);
       } else if (encryption instanceof Function) {
         this.#encryptionFunction = encryption;
       }

@@ -6,8 +6,12 @@ export const DEFAULT_PORT: number
 
 export interface MessageHead extends Basic.MessageHead {
     body?: Buffer
-    /** Contains original size of message before decryption */
-    originSize?: number
+    /** Contains original size of passed message before decryption and/or defragmentation */
+    originSize?: number,
+    /** Contains id of message. Available only in fragmented mode */
+    id?: string,
+    /** Contains date settled by client when message was sent. Available only in fragmented mode */
+    sentDate?: Date
 }
 
 export type UDPSocketOptions = Basic.UDPSocketOptions & {
@@ -63,7 +67,8 @@ type CollectorElem = [
   msgBodyMap:Map<number, Buffer>,
   lastUpdate: number,
   msgDate: Date,
-  msgId: string
+  msgId: string,
+  originSize: number
 ]
 
 type Collector = Map<string, CollectorElem>

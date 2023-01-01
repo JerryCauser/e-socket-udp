@@ -53,7 +53,7 @@ class UDPSocketPlus extends BasicUDPSocket {
         this.#decryptionSecret = Buffer.from(decryption, 'hex')
 
         this.#decryptionFunction = (data) =>
-          DEFAULT_DECRYPT_FUNCTION(data, this.#decryptionSecret)
+          DEFAULT_DECRYPT_FUNCTION(this.#decryptionSecret, data)
       } else if (decryption instanceof Function) {
         this.#decryptionFunction = decryption
       }
@@ -87,31 +87,42 @@ class UDPSocketPlus extends BasicUDPSocket {
       try {
         body = this.#decryptionFunction(body)
         head.originSize = head.size
-        head.size = body.byteLength
       } catch (e) {
         this.emit('warning', { message: 'decryption_fail' })
       }
     }
 
     if (this.#fragmentation !== true) {
+      head.size = body.byteLength
+
       return super.handleMessage(body, head)
     }
 
-    const [date, id, total, index] = parseId(body.subarray(0, ID_SIZE))
+    const [date, idBuffer, total, index] = parseId(body.subarray(0, ID_SIZE))
+    const id = idBuffer.toString('hex')
 
     /** @type {CollectorElem} */
     let data = this.#collector.get(id)
     if (!data) {
-      data = [new Map(), Date.now(), date, id]
+      data = [new Map(), Date.now(), date, id, 0]
       this.#collector.set(id, data)
     }
 
     data[0].set(index, body.subarray(ID_SIZE))
 
+    if (this.#decryptionEnabled) {
+      data[4] += head.originSize
+    } else {
+      data[4] += body.byteLength
+    }
+
     if (data[0].size === total + 1) {
       this.#collector.delete(id)
-      const compiledBody = this.#compileMessage(data[0], data[2], data[3])
+      const compiledBody = this.#compileMessage(data[0])
+      head.originSize = data[4]
       head.size = compiledBody.length
+      head.id = id
+      head.sentDate = date
 
       return super.handleMessage(compiledBody, head)
     }
@@ -136,29 +147,25 @@ class UDPSocketPlus extends BasicUDPSocket {
 
   /**
    * @param {Map<number, Buffer>} body
-   * @param {Date|number} date
-   * @param {string} id
+   * @return {Buffer}
    */
-  #compileMessage (body, date, id) {
+  #compileMessage (body) {
     let bodyBuffered
 
     if (body.size > 1) {
-      const sortedBuffers = [...body.entries()]
-        .sort((a, b) => a[0] - b[0])
-        .map((n) => n[1])
+      const chunkSize = body.get(0).byteLength
+      const size =
+        chunkSize * (body.size - 1) + body.get(body.size - 1).byteLength
+      bodyBuffered = Buffer.alloc(size)
 
-      bodyBuffered = Buffer.concat(sortedBuffers)
+      for (const entry of body) {
+        bodyBuffered.set(entry[1], chunkSize * entry[0])
+      }
     } else {
-      bodyBuffered = [...body.values()][0]
+      bodyBuffered = body.get(0)
     }
 
-    const idAsBuffer = Buffer.from(id, 'hex')
-
-    const result = Buffer.alloc(idAsBuffer.length + bodyBuffered.length)
-    result.set(idAsBuffer, 0)
-    result.set(bodyBuffered, idAsBuffer.length)
-
-    return result
+    return bodyBuffered
   }
 }
 

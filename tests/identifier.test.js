@@ -131,11 +131,7 @@ async function identifierTests ({
 
     const [date, id, total, index] = parseId(testId)
 
-    assert.strictEqual(
-      id,
-      expId.toString('hex'),
-      `${caseAlias} id isn't as expected`
-    )
+    assert.deepStrictEqual(id, expId, `${caseAlias} id isn't as expected`)
 
     assert.strictEqual(
       expDate,

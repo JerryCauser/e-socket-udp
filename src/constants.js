@@ -10,7 +10,7 @@ const DEFAULT_ENCRYPTION = 'aes-256-ctr'
  * @param {Buffer} secret
  * @returns {Buffer}
  */
-export const DEFAULT_ENCRYPT_FUNCTION = (payload, secret) => {
+export const DEFAULT_ENCRYPT_FUNCTION = (secret, payload) => {
   const iv = crypto.randomBytes(IV_SIZE).subarray(0, IV_SIZE)
   const cipher = crypto.createCipheriv(DEFAULT_ENCRYPTION, secret, iv)
   const beginChunk = cipher.update(payload)
@@ -23,11 +23,11 @@ export const DEFAULT_ENCRYPT_FUNCTION = (payload, secret) => {
 }
 
 /**
- * @param {Buffer} buffer
  * @param {Buffer} secret
+ * @param {Buffer} buffer
  * @returns {Buffer}
  */
-export const DEFAULT_DECRYPT_FUNCTION = (buffer, secret) => {
+export const DEFAULT_DECRYPT_FUNCTION = (secret, buffer) => {
   const iv = buffer.subarray(0, IV_SIZE)
   const payload = buffer.subarray(IV_SIZE)
   const decipher = crypto.createDecipheriv(DEFAULT_ENCRYPTION, secret, iv)

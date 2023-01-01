@@ -1,8 +1,11 @@
 /// <reference types="node" />
 import type { Buffer } from 'node:buffer'
+import type { EventEmitter } from 'node:events'
 import type * as Basic from 'socket-udp'
 
 export const DEFAULT_PORT: number
+export const WARNING_MISSING_MESSAGE: Symbol
+export const WARNING_DECRYPTION_FAIL: Symbol
 
 export interface MessageHead extends Basic.MessageHead {
     body?: Buffer
@@ -63,7 +66,7 @@ export class UDPClient extends Basic.UDPClient {
     handleMessage(body: Buffer, head: MessageHead): void
 }
 
-type CollectorElem = [
+declare type CollectorElem = [
   msgBodyMap:Map<number, Buffer>,
   lastUpdate: number,
   msgDate: Date,
@@ -71,4 +74,35 @@ type CollectorElem = [
   originSize: number
 ]
 
-type Collector = Map<string, CollectorElem>
+declare type CollectorMap = Map<string, CollectorElem>
+
+
+declare type WarningMessage = {
+    type: Symbol,
+    id: string,
+    date: Date
+}
+
+export interface CollectorInstance {
+    set (id: string, value: CollectorElem): this
+    get (id: string): CollectorElem
+    delete (id: string): boolean
+    start? (): void
+    stop? (): void
+    on? (event: 'warning', listener: (message: WarningMessage) => void): this
+    on? (event: string, listener: Function): this
+    off? (event: 'warning', listener: (message: WarningMessage) => void): this
+    off? (event: string, listener: Function): this
+}
+
+declare class Collector extends EventEmitter implements CollectorInstance {
+    set (id: string, value: CollectorElem): this
+    get (id: string): CollectorElem
+    delete (id: string): boolean
+    start (): void
+    stop (): void
+    on (event: 'warning', listener: (message: WarningMessage) => void): this
+    on (event: string, listener: Function): this
+    off (event: 'warning', listener: (message: WarningMessage) => void): this
+    off (event: string, listener: Function): this
+}

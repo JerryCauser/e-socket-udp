@@ -77,8 +77,7 @@ async function clientTest (UDPClient, identifier) {
       `${caseAlias} 1 message should be received by socket`
     )
 
-    // eslint-disable-next-line no-unused-vars
-    const [messageDate, id, total, index] = fragmentation
+    const [messageDate,, total, index] = fragmentation
       ? parseId(socket.messages[0].subarray(0, ID_SIZE))
       : []
 

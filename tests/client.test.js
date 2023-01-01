@@ -47,7 +47,7 @@ const createUDPSocket = async (port) => {
 
 async function clientTest (UDPClient, identifier) {
   const { ID_SIZE, parseId } = identifier
-  const alias = 'client.js:'
+  const alias = '  client.js:'
 
   const PAYLOAD_SIZE = 300
   const DEFAULT_PORT = 45002
@@ -77,7 +77,7 @@ async function clientTest (UDPClient, identifier) {
       `${caseAlias} 1 message should be received by socket`
     )
 
-    const [messageDate,, total, index] = fragmentation
+    const [messageDate, , total, index] = fragmentation
       ? parseId(socket.messages[0].subarray(0, ID_SIZE))
       : []
 

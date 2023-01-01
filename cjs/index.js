@@ -28,6 +28,8 @@ __export(e_udp_socket_exports, {
   DEFAULT_PORT: () => DEFAULT_PORT,
   UDPClient: () => client_default,
   UDPSocket: () => socket_default,
+  WARNING_DECRYPTION_FAIL: () => WARNING_DECRYPTION_FAIL,
+  WARNING_MISSING_MESSAGE: () => WARNING_MISSING_MESSAGE,
   _constants: () => constants_exports,
   _identifier: () => identifier_exports
 });
@@ -35,6 +37,95 @@ module.exports = __toCommonJS(e_udp_socket_exports);
 
 // src/socket.js
 var import_socket_udp = require("socket-udp");
+
+// src/collector.js
+var import_node_events = __toESM(require("node:events"), 1);
+
+// src/constants.js
+var constants_exports = {};
+__export(constants_exports, {
+  DEFAULT_DECRYPT_FUNCTION: () => DEFAULT_DECRYPT_FUNCTION,
+  DEFAULT_ENCRYPT_FUNCTION: () => DEFAULT_ENCRYPT_FUNCTION,
+  DEFAULT_PORT: () => DEFAULT_PORT,
+  IV_SIZE: () => IV_SIZE,
+  WARNING_DECRYPTION_FAIL: () => WARNING_DECRYPTION_FAIL,
+  WARNING_MISSING_MESSAGE: () => WARNING_MISSING_MESSAGE
+});
+var import_node_crypto = __toESM(require("node:crypto"), 1);
+var DEFAULT_PORT = 44302;
+var IV_SIZE = 16;
+var DEFAULT_ENCRYPTION = "aes-256-ctr";
+var DEFAULT_ENCRYPT_FUNCTION = (secret, payload) => {
+  const iv = import_node_crypto.default.randomBytes(IV_SIZE).subarray(0, IV_SIZE);
+  const cipher = import_node_crypto.default.createCipheriv(DEFAULT_ENCRYPTION, secret, iv);
+  const beginChunk = cipher.update(payload);
+  const finalChunk = cipher.final();
+  return Buffer.concat(
+    [iv, beginChunk, finalChunk],
+    IV_SIZE + beginChunk.length + finalChunk.length
+  );
+};
+var DEFAULT_DECRYPT_FUNCTION = (secret, buffer) => {
+  const iv = buffer.subarray(0, IV_SIZE);
+  const payload = buffer.subarray(IV_SIZE);
+  const decipher = import_node_crypto.default.createDecipheriv(DEFAULT_ENCRYPTION, secret, iv);
+  const beginChunk = decipher.update(payload);
+  const finalChunk = decipher.final();
+  return Buffer.concat(
+    [beginChunk, finalChunk],
+    beginChunk.length + finalChunk.length
+  );
+};
+var WARNING_MISSING_MESSAGE = Symbol("missing_message");
+var WARNING_DECRYPTION_FAIL = Symbol("decryption_fail");
+
+// src/collector.js
+var Collector = class extends import_node_events.default {
+  #collector = /* @__PURE__ */ new Map();
+  #gcIntervalId;
+  #gcIntervalTime;
+  #gcExpirationTime;
+  #gcFunction = () => {
+    const dateNow = Date.now();
+    for (const [id, payload] of this.#collector) {
+      if (payload[1] + this.#gcExpirationTime < dateNow) {
+        this.#collector.delete(id);
+        this.emit("warning", {
+          type: WARNING_MISSING_MESSAGE,
+          id,
+          date: payload[2]
+        });
+      }
+    }
+  };
+  constructor({
+    gcIntervalTime = 5e3,
+    gcExpirationTime = 1e4,
+    ...eventEmitterOptions
+  }) {
+    super(eventEmitterOptions);
+    this.#gcIntervalTime = gcIntervalTime;
+    this.#gcExpirationTime = gcExpirationTime;
+  }
+  start() {
+    this.#collector.clear();
+    this.#gcIntervalId = setInterval(this.#gcFunction, this.#gcIntervalTime);
+  }
+  stop() {
+    clearInterval(this.#gcIntervalId);
+    this.#collector.clear();
+  }
+  set(id, payload) {
+    return this.#collector.set(id, payload);
+  }
+  get(id) {
+    return this.#collector.get(id);
+  }
+  delete(id) {
+    return this.#collector.delete(id);
+  }
+};
+var collector_default = Collector;
 
 // src/identifier.js
 var identifier_exports = {};
@@ -52,7 +143,7 @@ __export(identifier_exports, {
   parseId: () => parseId,
   setChunkMetaInfo: () => setChunkMetaInfo
 });
-var import_node_crypto = __toESM(require("node:crypto"), 1);
+var import_node_crypto2 = __toESM(require("node:crypto"), 1);
 var DATE_SIZE = 6;
 var INCREMENTAL_SIZE = 4;
 var INCREMENTAL_EDGE = Buffer.alloc(INCREMENTAL_SIZE).fill(255).readUIntBE(0, INCREMENTAL_SIZE);
@@ -69,7 +160,7 @@ var incrementId = 0;
 var cacheOffset = 0;
 function refreshCache() {
   cacheOffset = 0;
-  import_node_crypto.default.randomFillSync(CACHE_BUFFER, 0, CACHE_SIZE);
+  import_node_crypto2.default.randomFillSync(CACHE_BUFFER, 0, CACHE_SIZE);
 }
 refreshCache();
 function generateId() {
@@ -108,50 +199,14 @@ function parseId(buffer) {
   return [date, id, total, index];
 }
 
-// src/constants.js
-var constants_exports = {};
-__export(constants_exports, {
-  DEFAULT_DECRYPT_FUNCTION: () => DEFAULT_DECRYPT_FUNCTION,
-  DEFAULT_ENCRYPT_FUNCTION: () => DEFAULT_ENCRYPT_FUNCTION,
-  DEFAULT_PORT: () => DEFAULT_PORT,
-  IV_SIZE: () => IV_SIZE
-});
-var import_node_crypto2 = __toESM(require("node:crypto"), 1);
-var DEFAULT_PORT = 44302;
-var IV_SIZE = 16;
-var DEFAULT_ENCRYPTION = "aes-256-ctr";
-var DEFAULT_ENCRYPT_FUNCTION = (secret, payload) => {
-  const iv = import_node_crypto2.default.randomBytes(IV_SIZE).subarray(0, IV_SIZE);
-  const cipher = import_node_crypto2.default.createCipheriv(DEFAULT_ENCRYPTION, secret, iv);
-  const beginChunk = cipher.update(payload);
-  const finalChunk = cipher.final();
-  return Buffer.concat(
-    [iv, beginChunk, finalChunk],
-    IV_SIZE + beginChunk.length + finalChunk.length
-  );
-};
-var DEFAULT_DECRYPT_FUNCTION = (secret, buffer) => {
-  const iv = buffer.subarray(0, IV_SIZE);
-  const payload = buffer.subarray(IV_SIZE);
-  const decipher = import_node_crypto2.default.createDecipheriv(DEFAULT_ENCRYPTION, secret, iv);
-  const beginChunk = decipher.update(payload);
-  const finalChunk = decipher.final();
-  return Buffer.concat(
-    [beginChunk, finalChunk],
-    beginChunk.length + finalChunk.length
-  );
-};
-
 // src/socket.js
 var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
   #decryptionFunction;
   #decryptionSecret;
   #decryptionEnabled = false;
-  #collector = /* @__PURE__ */ new Map();
-  #gcIntervalId;
   #fragmentation = true;
-  #gcIntervalTime;
-  #gcExpirationTime;
+  #collector;
+  #collectorWarningHandler = (message) => this.emit("warning", message);
   constructor({
     decryption,
     fragmentation = true,
@@ -160,8 +215,7 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
     ...udpSocketOptions
   } = {}) {
     super(udpSocketOptions);
-    this.#gcIntervalTime = gcIntervalTime;
-    this.#gcExpirationTime = gcExpirationTime;
+    this.#collector = new collector_default({ gcIntervalTime, gcExpirationTime });
     this.#fragmentation = fragmentation;
     if (decryption) {
       if (typeof decryption === "string") {
@@ -176,14 +230,16 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
     }
   }
   _construct(callback) {
-    this.#collector.clear();
-    this.#gcIntervalId = setInterval(this.#gcFunction, this.#gcIntervalTime);
+    var _a, _b, _c, _d;
+    (_b = (_a = this.#collector).start) == null ? void 0 : _b.call(_a);
+    (_d = (_c = this.#collector).on) == null ? void 0 : _d.call(_c, "warning", this.#collectorWarningHandler);
     super._construct(callback);
   }
   _destroy(error, callback) {
+    var _a, _b, _c, _d;
     super._destroy(error, callback);
-    clearInterval(this.#gcIntervalId);
-    this.#collector.clear();
+    (_b = (_a = this.#collector).off) == null ? void 0 : _b.call(_a, "warning", this.#collectorWarningHandler);
+    (_d = (_c = this.#collector).stop) == null ? void 0 : _d.call(_c);
   }
   handleMessage(body, head) {
     if (this.#decryptionEnabled) {
@@ -191,7 +247,7 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
         body = this.#decryptionFunction(body);
         head.originSize = head.size;
       } catch (e) {
-        this.emit("warning", { message: "decryption_fail" });
+        this.emit("warning", { type: WARNING_DECRYPTION_FAIL });
       }
     }
     if (this.#fragmentation !== true) {
@@ -222,19 +278,6 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
     }
     return this.allowPush;
   }
-  #gcFunction = () => {
-    const dateNow = Date.now();
-    for (const [id, payload] of this.#collector) {
-      if (payload[1] + this.#gcExpirationTime < dateNow) {
-        this.#collector.delete(id);
-        this.emit("warning", {
-          message: "missing_message",
-          id,
-          date: payload[2]
-        });
-      }
-    }
-  };
   #compileMessage(body) {
     let bodyBuffered;
     if (body.size > 1) {
@@ -346,6 +389,8 @@ var client_default = UDPClientPlus;
   DEFAULT_PORT,
   UDPClient,
   UDPSocket,
+  WARNING_DECRYPTION_FAIL,
+  WARNING_MISSING_MESSAGE,
   _constants,
   _identifier
 });

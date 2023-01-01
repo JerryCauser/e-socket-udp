@@ -1,6 +1,10 @@
 import { UDPSocket as BasicUDPSocket } from 'socket-udp'
+import Collector from './collector.js'
 import { ID_SIZE, parseId } from './identifier.js'
-import { DEFAULT_DECRYPT_FUNCTION } from './constants.js'
+import {
+  DEFAULT_DECRYPT_FUNCTION,
+  WARNING_DECRYPTION_FAIL
+} from './constants.js'
 
 /**
  * @class
@@ -16,20 +20,14 @@ class UDPSocketPlus extends BasicUDPSocket {
   /** @type {boolean} */
   #decryptionEnabled = false
 
-  /** @type {Collector} data */
-  #collector = new Map()
-
-  /** @type {number} */
-  #gcIntervalId
-
   /** @type {boolean} */
   #fragmentation = true
 
-  /** @type {number} */
-  #gcIntervalTime
+  /** @type {CollectorInstance} */
+  #collector
 
-  /** @type {number} */
-  #gcExpirationTime
+  /** @type {(WarningMessage) => boolean} */
+  #collectorWarningHandler = (message) => this.emit('warning', message)
 
   /**
    * @param {UDPSocketOptions} [options]
@@ -43,9 +41,7 @@ class UDPSocketPlus extends BasicUDPSocket {
   } = {}) {
     super(udpSocketOptions)
 
-    this.#gcIntervalTime = gcIntervalTime
-    this.#gcExpirationTime = gcExpirationTime
-
+    this.#collector = new Collector({ gcIntervalTime, gcExpirationTime })
     this.#fragmentation = fragmentation
 
     if (decryption) {
@@ -65,8 +61,8 @@ class UDPSocketPlus extends BasicUDPSocket {
   }
 
   _construct (callback) {
-    this.#collector.clear()
-    this.#gcIntervalId = setInterval(this.#gcFunction, this.#gcIntervalTime)
+    this.#collector.start?.()
+    this.#collector.on?.('warning', this.#collectorWarningHandler)
 
     super._construct(callback)
   }
@@ -74,8 +70,8 @@ class UDPSocketPlus extends BasicUDPSocket {
   _destroy (error, callback) {
     super._destroy(error, callback)
 
-    clearInterval(this.#gcIntervalId)
-    this.#collector.clear()
+    this.#collector.off?.('warning', this.#collectorWarningHandler)
+    this.#collector.stop?.()
   }
 
   /**
@@ -88,7 +84,7 @@ class UDPSocketPlus extends BasicUDPSocket {
         body = this.#decryptionFunction(body)
         head.originSize = head.size
       } catch (e) {
-        this.emit('warning', { message: 'decryption_fail' })
+        this.emit('warning', { type: WARNING_DECRYPTION_FAIL })
       }
     }
 
@@ -128,21 +124,6 @@ class UDPSocketPlus extends BasicUDPSocket {
     }
 
     return this.allowPush
-  }
-
-  #gcFunction = () => {
-    const dateNow = Date.now()
-
-    for (const [id, payload] of this.#collector) {
-      if (payload[1] + this.#gcExpirationTime < dateNow) {
-        this.#collector.delete(id)
-        this.emit('warning', {
-          message: 'missing_message',
-          id,
-          date: payload[2]
-        })
-      }
-    }
   }
 
   /**

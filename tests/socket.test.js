@@ -55,7 +55,7 @@ async function socketTest (UDPSocket, identifier, constants) {
   const alias = '  socket.js: '
 
   const { generateId, setChunkMetaInfo, ID_SIZE, DATE_SIZE } = identifier
-  const { DEFAULT_ENCRYPT_FUNCTION } = constants
+  const { DEFAULT_ENCRYPT_FUNCTION, WARNING_MISSING_MESSAGE } = constants
 
   const DEFAULT_PORT = 45007
   const SMALL_PACKET_SIZE = 300
@@ -111,8 +111,7 @@ async function socketTest (UDPSocket, identifier, constants) {
     const client = await createUDPClient()
     const socket = await createUDPSocket({
       port: DEFAULT_PORT,
-      fragmentation,
-      packetSize: SMALL_PACKET_SIZE
+      fragmentation
     })
 
     let payloadOne, payloadTwo, chunkOne, chunkTwo
@@ -188,8 +187,7 @@ async function socketTest (UDPSocket, identifier, constants) {
     const client = await createUDPClient()
     const socket = await createUDPSocket({
       port: DEFAULT_PORT,
-      fragmentation: true,
-      packetSize: BIG_PACKET_SIZE
+      fragmentation: true
     })
 
     const payload1 = crypto.randomBytes(BIG_PACKET_SIZE - ID_SIZE)
@@ -306,8 +304,7 @@ async function socketTest (UDPSocket, identifier, constants) {
       fragmentation: true,
       gcExpirationTime: 6,
       gcIntervalTime: 3,
-      port: DEFAULT_PORT,
-      packetSize: BIG_PACKET_SIZE
+      port: DEFAULT_PORT
     })
 
     const dateNow = Date.now()
@@ -320,8 +317,8 @@ async function socketTest (UDPSocket, identifier, constants) {
 
     let missingWarningAppeared = false
 
-    socket.once('warning', (error) => {
-      if (error.message === 'missing_message') {
+    socket.once('warning', (message) => {
+      if (message.type === WARNING_MISSING_MESSAGE) {
         missingWarningAppeared = true
       }
     })
@@ -408,7 +405,6 @@ async function socketTest (UDPSocket, identifier, constants) {
     const socket = await createUDPSocket({
       port: DEFAULT_PORT,
       fragmentation,
-      packetSize: BIG_PACKET_SIZE,
       decryption: dec
     })
 

@@ -106,6 +106,7 @@ It is a UDP socket in `readable stream` form with encoding and possibility to ha
     - if passed `string` - will be applied `aes-256-ctr` decryption with passed string as a secret, so it should be `64char` long;
     - if passed `function` - will be used that function to decrypt every message;
     - if passed `undefined` - will not use any kind of decryption.
+  - `fragmentation` `<boolean>` – optional. Combine chunks into message. Useful with any size of messages (especially big ones). **Default** `true`
   - `gcIntervalTime` `<number>` — optional. How often instance will check internal buffer to delete expired messages (in ms). **Default** `5000` 
   - `gcExpirationTime` `<number>`— optional. How long chunks can await all missing chunks in internal buffer (in ms). **Default** `10000`
 
@@ -124,14 +125,14 @@ Emitted when socket started and ready to receive data.
 
 ##### Event: `'warning'`
 Emitted when warning occurs.
- - `payload` `<object | Error>`
-   - `message` `<string>`
+ - `message` `<object | Error>`
+   - `type` `<Symbol>`
    - `id` `<string>` – optional
    - `date` `<Date>` – optional
 
-A message might be:
-   - `missing_message` – when some messages didn't receive all chunks and got expired.
-   - `compile_message_error` – when some messages failed to be compiled from chunks.
+A type might be:
+   - `Symbol<'missing_message'>` – when some messages didn't receive all chunks and got expired.
+   - `Symbol<'decryption_message'>` – when some messages failed to be compiled from chunks.
 
 #### Usage
 ##### Example how to use pure socket as async generator
@@ -168,6 +169,12 @@ socket.pipe(writer)
 ### Additional Exposed variables and functions
 #### constant `DEFAULT_PORT`
 - `<number>` : `44302`
+
+#### constant `WARNING_MISSING_MESSAGE`
+- `<Symbol>` : `Symbol<'missing_message'>`
+
+#### constant `WARNING_DECRYPTION_FAIL`
+- `<Symbol>` : `Symbol<'decryption_fail'>`
 ---
 
 There are `_identifier` and `_constants` exposed also, but they are used for internal needs. They could be removed in next releases, so it is not recommended to use it in your project.  

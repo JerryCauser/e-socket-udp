@@ -14,11 +14,12 @@
     "/cjs/index.js",
     "/cjs/package.json",
     "/src",
-    "/types",
+    "index.d.ts",
     "index.js",
     "CHANGELOG.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "package.json"
   ],
   "engines": {
     "node": ">=16.0.0"

@@ -57,12 +57,12 @@
   },
   "homepage": "https://github.com/JerryCauser/e-socket-udp#readme",
   "dependencies": {
-    "socket-udp": "^0.3.0"
+    "socket-udp": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^18.11.18",
-    "esbuild": "^0.16.12",
-    "husky": "^8.0.2",
+    "esbuild": "^0.16.13",
+    "husky": "^8.0.3",
     "prettier": "^2.8.1",
     "standard": "^17.0.0",
     "standard-version": "^9.5.0"

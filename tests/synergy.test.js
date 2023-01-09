@@ -29,11 +29,7 @@ async function synergyTest (UDPSocket, UDPClient) {
   const createReader = ({ data, fast }) => {
     const reader = new Readable({
       read (size) {
-        if (process.env.NODE_ENV === 'git') {
-          delay(5).then(() => reader.emit('readyToRead'))
-        } else {
-          reader.emit('readyToRead')
-        }
+        delay(5).then(() => reader.emit('readyToRead'))
       }
     })
 

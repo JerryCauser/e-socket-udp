@@ -22,36 +22,44 @@ const delay = (ms) =>
 async function synergyTest (UDPSocket, UDPClient) {
   const alias = '  synergy.js: '
 
-  const DEFAULT_PORT = 45007
-  const PACKET_SIZE = 540
-  const PAYLOAD_SIZE = 2 ** 17
+  let defaultPort = 45007
+  const GET_PORT = () => ++defaultPort
+  const PACKET_SIZE = 508
 
   const createReader = ({ data, fast }) => {
     const reader = new Readable({
       read (size) {
-        reader.readyToRead = true
+        delay(5).then(() => reader.emit('readyToRead'))
       }
     })
 
-    const interval = fast ? 1 : 10
+    reader.pushedSize = 0
+
+    const sliceMethod = typeof data === 'string' ? 'slice' : 'subarray'
 
     reader.startReading = async () => {
-      while (true) {
-        if (reader.readyToRead === true) break
-        await delay(5)
-      }
-
       while (data.length !== 0) {
-        const chunkSize = Math.min(data.length, Math.round(PACKET_SIZE / 2 + Math.random() * 4 * PACKET_SIZE))
-        const chunk = data.subarray(0, chunkSize)
-        data = data.subarray(chunkSize)
+        const chunkSize = Math.min(
+          data.length,
+          Math.round(PACKET_SIZE / 2 + Math.random() * 20 * PACKET_SIZE)
+        )
 
-        reader.push(chunk)
+        const chunk = data[sliceMethod](0, chunkSize)
 
-        await delay(interval)
+        const pushResult = reader.push(chunk)
+
+        data = data[sliceMethod](chunkSize)
+
+        reader.pushedSize += chunk.length
+
+        if (pushResult === false && data.length > 0) {
+          await once(reader, 'readyToRead')
+        }
+
+        if (!fast) await delay(10)
       }
 
-      await delay(5)
+      await delay(100)
     }
 
     return reader
@@ -82,8 +90,10 @@ async function synergyTest (UDPSocket, UDPClient) {
     )
   }
 
-  async function testSynergy (port) {
-    const caseAlias = `${alias} sending messages ->`
+  async function testSynergy (port, fast, payloadSize) {
+    const caseAlias = `${alias} sending messages fast=${
+      fast ? 1 : 0
+    }, payloadSize=${payloadSize} ->`
     const results = { fails: [] }
 
     const writer = createWriter()
@@ -92,36 +102,25 @@ async function synergyTest (UDPSocket, UDPClient) {
 
     socket.pipe(writer)
 
-    const slowPayload = crypto.randomBytes(PAYLOAD_SIZE)
-    const slowReader = createReader({ data: slowPayload, fast: false })
+    const payload = crypto.randomBytes(payloadSize)
+    const reader = createReader({ data: payload, fast })
 
-    slowReader.pipe(client)
-    await slowReader.startReading()
+    reader.pipe(client)
+    await reader.startReading()
 
-    const slowMessage = Buffer.concat(writer.result)
+    const message = Buffer.concat(writer.result)
 
     checkOnlyMessage({
       caseAlias,
-      message: slowMessage,
+      message,
       results,
-      payload: slowPayload
+      payload
     })
 
-    writer.result.length = 0
-
-    const fastPayload = crypto.randomBytes(PAYLOAD_SIZE)
-    const fastReader = createReader({ data: fastPayload, fast: true })
-
-    fastReader.pipe(client)
-    await fastReader.startReading()
-
-    const fastMessage = Buffer.concat(writer.result)
-
-    checkOnlyMessage({
-      caseAlias,
-      message: fastMessage,
-      results,
-      payload: fastPayload
+    console.log({
+      payload: payload.length,
+      message: message.length,
+      pushed: reader.pushedSize
     })
 
     socket.destroy()
@@ -134,7 +133,16 @@ async function synergyTest (UDPSocket, UDPClient) {
 
   const errors = tryCountErrorHook()
 
-  await errors.try(() => testSynergy(DEFAULT_PORT))
+  console.log(process.env.NODE_ENV)
+
+  await errors.try(() => testSynergy(GET_PORT(), false, 2 ** 8))
+  await errors.try(() => testSynergy(GET_PORT(), false, 2 ** 15))
+  await errors.try(() => testSynergy(GET_PORT(), false, 2 ** 17)) // 128kb
+  await errors.try(() => testSynergy(GET_PORT(), true, 2 ** 8))
+  await errors.try(() => testSynergy(GET_PORT(), true, 2 ** 15))
+  await errors.try(() => testSynergy(GET_PORT(), true, 2 ** 17)) // 128kb
+  await errors.try(() => testSynergy(GET_PORT(), true, 2 ** 20)) // 1mb
+  await errors.try(() => testSynergy(GET_PORT(), true, 2 ** 24)) // 16mb
 
   if (errors.count === 0) {
     console.log('[synergy.js] All test for passed\n')

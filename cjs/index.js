@@ -17,6 +17,10 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
@@ -80,10 +84,31 @@ var WARNING_MISSING_MESSAGE = Symbol("missing_message");
 var WARNING_DECRYPTION_FAIL = Symbol("decryption_fail");
 
 // src/collector.js
+var ArrayIndexed = class extends Array {
+  size = 0;
+  contentLength = 0;
+  set(index, value) {
+    if (value === void 0)
+      return;
+    if (this[index] === void 0) {
+      this[index] = value;
+      this.contentLength += value.length;
+      ++this.size;
+    }
+    return this.size;
+  }
+  clear() {
+    this.length = 0;
+  }
+};
 var Collector = class extends import_node_events.default {
+  /** @type {CollectorMap} data */
   #collector = /* @__PURE__ */ new Map();
+  /** @type {number} */
   #gcIntervalId;
+  /** @type {number} */
   #gcIntervalTime;
+  /** @type {number} */
   #gcExpirationTime;
   #gcFunction = () => {
     const dateNow = Date.now();
@@ -115,12 +140,25 @@ var Collector = class extends import_node_events.default {
     clearInterval(this.#gcIntervalId);
     this.#collector.clear();
   }
+  /**
+   * @param {string} id
+   * @param {CollectorElem} payload
+   * @return {Map<string, CollectorElem>}
+   */
   set(id, payload) {
     return this.#collector.set(id, payload);
   }
+  /**
+   * @param {string} id
+   * @return {CollectorElem}
+   */
   get(id) {
     return this.#collector.get(id);
   }
+  /**
+   * @param {string} id
+   * @return {boolean}
+   */
   delete(id) {
     return this.#collector.delete(id);
   }
@@ -145,13 +183,13 @@ __export(identifier_exports, {
 });
 var import_node_crypto2 = __toESM(require("node:crypto"), 1);
 var DATE_SIZE = 6;
-var INCREMENTAL_SIZE = 4;
+var INCREMENTAL_SIZE = 6;
 var INCREMENTAL_EDGE = Buffer.alloc(INCREMENTAL_SIZE).fill(255).readUIntBE(0, INCREMENTAL_SIZE);
 var TIME_META_SIZE = DATE_SIZE + INCREMENTAL_SIZE;
 var RANDOM_SIZE = 6;
 var SEED_SIZE = TIME_META_SIZE + RANDOM_SIZE;
-var COUNTER_TOTAL_SIZE = 3;
-var COUNTER_INDEX_SIZE = 3;
+var COUNTER_TOTAL_SIZE = 5;
+var COUNTER_INDEX_SIZE = 5;
 var CHUNK_META_SIZE = COUNTER_TOTAL_SIZE + COUNTER_INDEX_SIZE;
 var ID_SIZE = SEED_SIZE + CHUNK_META_SIZE;
 var CACHE_SIZE = 2048 * RANDOM_SIZE;
@@ -201,12 +239,21 @@ function parseId(buffer) {
 
 // src/socket.js
 var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
+  /** @type {undefined|function(Buffer): Buffer} */
   #decryptionFunction;
+  /** @type {undefined|Buffer} */
   #decryptionSecret;
+  /** @type {boolean} */
   #decryptionEnabled = false;
+  /** @type {boolean} */
   #fragmentation = true;
+  /** @type {CollectorInstance} */
   #collector;
+  /** @type {(WarningMessage) => boolean} */
   #collectorWarningHandler = (message) => this.emit("warning", message);
+  /**
+   * @param {UDPSocketOptions} [options]
+   */
   constructor({
     decryption,
     fragmentation = true,
@@ -241,6 +288,10 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
     (_b = (_a = this.#collector).off) == null ? void 0 : _b.call(_a, "warning", this.#collectorWarningHandler);
     (_d = (_c = this.#collector).stop) == null ? void 0 : _d.call(_c);
   }
+  /**
+   * @param {Buffer} body
+   * @param {MessageHead} head
+   */
   handleMessage(body, head) {
     if (this.#decryptionEnabled) {
       try {
@@ -258,7 +309,7 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
     const id = idBuffer.toString("hex");
     let data = this.#collector.get(id);
     if (!data) {
-      data = [/* @__PURE__ */ new Map(), Date.now(), date, id, 0];
+      data = [new ArrayIndexed(total + 1), Date.now(), date, id, 0];
       this.#collector.set(id, data);
     }
     data[0].set(index, body.subarray(ID_SIZE));
@@ -278,17 +329,20 @@ var UDPSocketPlus = class extends import_socket_udp.UDPSocket {
     }
     return this.allowPush;
   }
+  /**
+   * @param {ArrayIndexed<Buffer>} body
+   * @return {Buffer}
+   */
   #compileMessage(body) {
     let bodyBuffered;
-    if (body.size > 1) {
-      const chunkSize = body.get(0).byteLength;
-      const size = chunkSize * (body.size - 1) + body.get(body.size - 1).byteLength;
-      bodyBuffered = Buffer.alloc(size);
-      for (const entry of body) {
-        bodyBuffered.set(entry[1], chunkSize * entry[0]);
+    if (body.length > 1) {
+      bodyBuffered = Buffer.alloc(body.contentLength);
+      for (let offset = 0, i = 0; i < body.length; ++i) {
+        bodyBuffered.set(body[i], offset);
+        offset += body[i].length;
       }
     } else {
-      bodyBuffered = body.get(0);
+      bodyBuffered = body[0];
     }
     return bodyBuffered;
   }
@@ -298,11 +352,44 @@ var socket_default = UDPSocketPlus;
 // src/client.js
 var import_socket_udp2 = require("socket-udp");
 var UDPClientPlus = class extends import_socket_udp2.UDPClient {
+  /** @type {boolean} */
   #fragmentation = true;
+  /** @type {number} */
   #packetSize;
+  /** @type {boolean} */
   #encryptionEnabled = false;
+  /** @type {(Buffer) => Buffer} */
   #encryptionFunction;
+  /** @type {Buffer} */
   #encryptionSecret;
+  /** @type {[Buffer, BufferEncoding][]} */
+  #interruptedData = [];
+  #sendInterrupted = () => {
+    let i;
+    for (i = 0; i < this.#interruptedData.length; ++i) {
+      super.write(
+        this.#interruptedData[i][0],
+        this.#interruptedData[i][1]
+      );
+      if (this.allowWrite === false)
+        break;
+    }
+    this.#interruptedData.splice(0, i + 1);
+    if (this.#interruptedData.length > 0) {
+      this.once("_drain:internal", this.#sendInterrupted);
+    } else if (this.allowWrite) {
+      super.emit("drain");
+    }
+  };
+  emit() {
+    if (arguments[0] === "drain" && this.#interruptedData.length > 0) {
+      return super.emit("_drain:internal");
+    }
+    return super.emit.apply(this, arguments);
+  }
+  /**
+   * @param {UDPClientOptions} [options]
+   */
   constructor({
     encryption,
     fragmentation = true,
@@ -327,23 +414,37 @@ var UDPClientPlus = class extends import_socket_udp2.UDPClient {
   }
   write(buffer, encoding, cb) {
     if (this.#fragmentation) {
-      return this.#sendInFragments(buffer, generateId(), encoding, cb);
+      this.#sendInFragments(buffer, generateId(), encoding, cb);
     } else {
       if (this.#encryptionEnabled) {
-        return super.write(this.#encryptionFunction(buffer), encoding, cb);
+        super.write(
+          this.#encryptionFunction(buffer),
+          encoding,
+          cb
+        );
       } else {
-        return super.write(buffer, encoding, cb);
+        super.write(buffer, encoding, cb);
       }
     }
+    if (this.allowWrite === false && this.#interruptedData.length > 0) {
+      this.once("_drain:internal", this.#sendInterrupted);
+    }
+    return this.allowWrite;
   }
+  /**
+   * @param {Buffer} payload
+   * @param {Buffer} id
+   * @param {BufferEncoding} encoding
+   * @param {function} callback
+   * @returns {boolean}
+   */
   #sendInFragments(payload, id, encoding, callback) {
     const total = Math.ceil(payload.length / this.#packetSize) - 1;
     const promises = [];
     const callbackExists = callback instanceof Function;
-    let allowWrite = true;
     const createFragmentCallbackPromise = (fragment) => {
       return new Promise((resolve, reject) => {
-        allowWrite = super.write(fragment, encoding, (err) => {
+        super.write(fragment, encoding, (err) => {
           if (err)
             reject(err);
           resolve();
@@ -360,21 +461,28 @@ var UDPClientPlus = class extends import_socket_udp2.UDPClient {
       if (this.#encryptionEnabled) {
         fragment = this.#encryptionFunction(fragment);
       }
-      if (allowWrite) {
+      if (this.allowWrite) {
         if (callbackExists) {
           promises.push(createFragmentCallbackPromise(fragment));
         } else {
-          allowWrite = super.write(fragment, encoding);
+          super.write(fragment, encoding);
         }
       } else {
-        break;
+        this.#interruptedData.push([fragment, encoding]);
       }
     }
     if (callbackExists) {
       Promise.all(promises).then(() => callback()).catch(callback);
     }
-    return allowWrite;
+    return this.allowWrite;
   }
+  /**
+   * @param {Buffer} id
+   * @param {number} total
+   * @param {number} index
+   * @param {Buffer} chunk
+   * @returns {Buffer}
+   */
   #markFragment(id, total, index, chunk) {
     const resultChunk = Buffer.alloc(chunk.length + ID_SIZE);
     resultChunk.set(id, 0);

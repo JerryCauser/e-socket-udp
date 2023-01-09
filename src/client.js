@@ -22,6 +22,37 @@ class UDPClientPlus extends BasicUDPClient {
   /** @type {Buffer} */
   #encryptionSecret
 
+  /** @type {[Buffer, BufferEncoding][]} */
+  #interruptedData = []
+
+  #sendInterrupted = () => {
+    let i
+    for (i = 0; i < this.#interruptedData.length; ++i) {
+      super.write(
+        this.#interruptedData[i][0],
+        this.#interruptedData[i][1]
+      )
+
+      if (this.allowWrite === false) break
+    }
+
+    this.#interruptedData.splice(0, i + 1)
+
+    if (this.#interruptedData.length > 0) {
+      this.once('_drain:internal', this.#sendInterrupted)
+    } else if (this.allowWrite) {
+      super.emit('drain')
+    }
+  }
+
+  emit () {
+    if (arguments[0] === 'drain' && this.#interruptedData.length > 0) {
+      return super.emit('_drain:internal')
+    }
+
+    return super.emit.apply(this, arguments)
+  }
+
   /**
    * @param {UDPClientOptions} [options]
    */
@@ -53,22 +84,26 @@ class UDPClientPlus extends BasicUDPClient {
     }
   }
 
-  /**
-   * @param {Buffer} buffer
-   * @param {BufferEncoding} encoding
-   * @param {function} cb
-   * @returns {boolean}
-   */
   write (buffer, encoding, cb) {
     if (this.#fragmentation) {
-      return this.#sendInFragments(buffer, generateId(), encoding, cb)
+      this.#sendInFragments(buffer, generateId(), encoding, cb)
     } else {
       if (this.#encryptionEnabled) {
-        return super.write(this.#encryptionFunction(buffer), encoding, cb)
+        super.write(
+          this.#encryptionFunction(buffer),
+          encoding,
+          cb
+        )
       } else {
-        return super.write(buffer, encoding, cb)
+        super.write(buffer, encoding, cb)
       }
     }
+
+    if (this.allowWrite === false && this.#interruptedData.length > 0) {
+      this.once('_drain:internal', this.#sendInterrupted)
+    }
+
+    return this.allowWrite
   }
 
   /**
@@ -83,11 +118,9 @@ class UDPClientPlus extends BasicUDPClient {
     const promises = []
     const callbackExists = callback instanceof Function
 
-    let allowWrite = true
-
     const createFragmentCallbackPromise = (fragment) => {
       return new Promise((resolve, reject) => {
-        allowWrite = super.write(fragment, encoding, (err) => {
+        super.write(fragment, encoding, (err) => {
           if (err) reject(err)
 
           resolve()
@@ -107,14 +140,14 @@ class UDPClientPlus extends BasicUDPClient {
         fragment = this.#encryptionFunction(fragment)
       }
 
-      if (allowWrite) {
+      if (this.allowWrite) {
         if (callbackExists) {
           promises.push(createFragmentCallbackPromise(fragment))
         } else {
-          allowWrite = super.write(fragment, encoding)
+          super.write(fragment, encoding)
         }
       } else {
-        break
+        this.#interruptedData.push([fragment, encoding])
       }
     }
 
@@ -124,7 +157,7 @@ class UDPClientPlus extends BasicUDPClient {
         .catch(callback)
     }
 
-    return allowWrite
+    return this.allowWrite
   }
 
   /**

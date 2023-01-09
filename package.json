@@ -31,7 +31,9 @@
     "release:major": "standard-version --release-as major",
     "push-release": "git push --follow-tags origin master",
     "prettify": "prettier --write -u './*.js' './**/*.js' !./cjs/index.js",
-    "test": "standard && node tests/index.js && node cjs/test.js",
+    "test": "standard && npm run test:esm && npm run test:cjs",
+    "test:esm": "node tests/index.js",
+    "test:cjs": "node cjs/test.js",
     "fix": "npm run prettify && standard --fix",
     "prepare": "husky install"
   },
@@ -57,13 +59,13 @@
   },
   "homepage": "https://github.com/JerryCauser/e-socket-udp#readme",
   "dependencies": {
-    "socket-udp": "^0.4.0"
+    "socket-udp": "^0.4.4"
   },
   "devDependencies": {
     "@types/node": "^18.11.18",
-    "esbuild": "^0.16.13",
+    "esbuild": "^0.16.16",
     "husky": "^8.0.3",
-    "prettier": "^2.8.1",
+    "prettier": "^2.8.2",
     "standard": "^17.0.0",
     "standard-version": "^9.5.0"
   },

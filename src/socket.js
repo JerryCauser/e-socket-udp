@@ -1,5 +1,5 @@
 import { UDPSocket as BasicUDPSocket } from 'socket-udp'
-import Collector from './collector.js'
+import Collector, { ArrayIndexed } from './collector.js'
 import { ID_SIZE, parseId } from './identifier.js'
 import {
   DEFAULT_DECRYPT_FUNCTION,
@@ -100,7 +100,7 @@ class UDPSocketPlus extends BasicUDPSocket {
     /** @type {CollectorElem} */
     let data = this.#collector.get(id)
     if (!data) {
-      data = [new Map(), Date.now(), date, id, 0]
+      data = [new ArrayIndexed(total + 1), Date.now(), date, id, 0]
       this.#collector.set(id, data)
     }
 
@@ -127,23 +127,21 @@ class UDPSocketPlus extends BasicUDPSocket {
   }
 
   /**
-   * @param {Map<number, Buffer>} body
+   * @param {ArrayIndexed<Buffer>} body
    * @return {Buffer}
    */
   #compileMessage (body) {
     let bodyBuffered
 
-    if (body.size > 1) {
-      const chunkSize = body.get(0).byteLength
-      const size =
-        chunkSize * (body.size - 1) + body.get(body.size - 1).byteLength
-      bodyBuffered = Buffer.alloc(size)
+    if (body.length > 1) {
+      bodyBuffered = Buffer.alloc(body.contentLength)
 
-      for (const entry of body) {
-        bodyBuffered.set(entry[1], chunkSize * entry[0])
+      for (let offset = 0, i = 0; i < body.length; ++i) {
+        bodyBuffered.set(body[i], offset)
+        offset += body[i].length
       }
     } else {
-      bodyBuffered = body.get(0)
+      bodyBuffered = body[0]
     }
 
     return bodyBuffered

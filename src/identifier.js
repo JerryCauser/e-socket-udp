@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 
 export const DATE_SIZE = 6
 
-export const INCREMENTAL_SIZE = 4
+export const INCREMENTAL_SIZE = 6
 const INCREMENTAL_EDGE = Buffer.alloc(INCREMENTAL_SIZE)
   .fill(0xff)
   .readUIntBE(0, INCREMENTAL_SIZE)
@@ -13,8 +13,8 @@ export const RANDOM_SIZE = 6
 
 export const SEED_SIZE = TIME_META_SIZE + RANDOM_SIZE
 
-export const COUNTER_TOTAL_SIZE = 3
-export const COUNTER_INDEX_SIZE = 3
+export const COUNTER_TOTAL_SIZE = 5
+export const COUNTER_INDEX_SIZE = 5
 const CHUNK_META_SIZE = COUNTER_TOTAL_SIZE + COUNTER_INDEX_SIZE
 
 export const ID_SIZE = SEED_SIZE + CHUNK_META_SIZE

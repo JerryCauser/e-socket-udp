@@ -1,6 +1,28 @@
 import EventEmitter from 'node:events'
 import { WARNING_MISSING_MESSAGE } from './constants.js'
 
+export class ArrayIndexed extends Array {
+  size = 0
+  contentLength = 0
+
+  set (index, value) {
+    if (value === undefined) return
+
+    if (this[index] === undefined) {
+      this[index] = value
+
+      this.contentLength += value.length
+      ++this.size
+    }
+
+    return this.size
+  }
+
+  clear () {
+    this.length = 0
+  }
+}
+
 class Collector extends EventEmitter {
   /** @type {CollectorMap} data */
   #collector = new Map()

@@ -17,6 +17,13 @@ export interface MessageHead extends Basic.MessageHead {
     sentDate?: Date
 }
 
+declare class ArrayIndexed<T extends (Buffer|string|ArrayBufferLike)> extends Array {
+    size: number
+    contentLength: number
+    set (index: number, value: T): number
+    clear (): void
+}
+
 export type UDPSocketOptions = Basic.UDPSocketOptions & {
     /**
      * if passed string - will be applied 'aes-256-ctr' decryption with passed string as secret, so it should be 64char long;
@@ -67,7 +74,7 @@ export class UDPClient extends Basic.UDPClient {
 }
 
 declare type CollectorElem = [
-  msgBodyMap:Map<number, Buffer>,
+  msgBodyMap: ArrayIndexed<Buffer>,
   lastUpdate: number,
   msgDate: Date,
   msgId: string,
@@ -75,7 +82,6 @@ declare type CollectorElem = [
 ]
 
 declare type CollectorMap = Map<string, CollectorElem>
-
 
 declare type WarningMessage = {
     type: Symbol,

@@ -29,7 +29,11 @@ async function synergyTest (UDPSocket, UDPClient) {
   const createReader = ({ data, fast }) => {
     const reader = new Readable({
       read (size) {
-        delay(1).then(() => reader.emit('readyToRead'))
+        if (process.env.NODE_ENV === 'git') {
+          delay(5).then(() => reader.emit('readyToRead'))
+        } else {
+          reader.emit('readyToRead')
+        }
       }
     })
 
@@ -132,6 +136,8 @@ async function synergyTest (UDPSocket, UDPClient) {
   }
 
   const errors = tryCountErrorHook()
+
+  console.log(process.env.NODE_ENV)
 
   await errors.try(() => testSynergy(GET_PORT(), false, 2 ** 8))
   await errors.try(() => testSynergy(GET_PORT(), false, 2 ** 15))
